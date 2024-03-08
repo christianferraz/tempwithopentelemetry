@@ -1,0 +1,88 @@
+version: '3'
+services:
+  jaeger-all-in-one:
+    image: jaegertracing/all-in-one:latest
+    restart: always
+    ports:
+      - "16686:16686"
+      - "14268"
+      - "14250"
+  prometheus:
+    image: prom/prometheus:latest
+    restart: always
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./.docker/prometheus.yaml:/etc/prometheus/prometheus.yml
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    ports:
+      - "4317:4317"
+      - "8888:/8888"
+      - "8889/8889"
+    volumes:
+      - ./.docker/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+  goapp:
+    container name:
+    build:
+      context: .
+environment:
+  - TITLE=Microservice Demo
+  - CONTENT=This is a demo of a microservice
+  - BACKGROUD_COLOR=green
+  - EXTERNAL_CALL_URL=http://goapp2:8181
+  - EXTERNAL_CALL_METHOD=GET
+  - REQUEST_NAME_OTEL=microservice-demo-request
+  - OTEL_SERVICE_NAME=microservice-demo
+  - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+  - HTTP_PORT=:8080
+ports:
+  - "8080:8080"
+depends_on:
+  - jaeger—all—in—one
+  - prometheus
+  - otel—collector
+
+goapp:
+  container_name: goapp
+  build:
+    context: .
+  environment:
+    - TITLE=Microservice Demo
+    - CONTENT=This is a demo of a microservice
+    - BACKGROUND_COLOR=green
+    - RESPONSE_TIME=1000
+    - EXTERNAL_CALL_URL=http://goapp2:8181
+    - EXTERNAL_CALL_METHOD=GET
+    - REQUEST_NAME_OTEL=microservice-demo-request
+    - OTEL_SERVICE_NAME=microservice-demo
+    - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+    - HTTP_PORT=:8080
+  ports:
+    - "8080:8080"
+  depends_on:
+    - jaeger-all-in-one
+    - zipkin-all-in-one
+    - prometheus
+    - otel-collector
+goapp2:
+    container_name: goapp2
+    build:
+      context: .
+    environment:
+      - TITLE=Microservice Demo 3
+      - CONTENT=This is a demo of a microservice
+      - BACKGROUND_COLOR=green
+      - RESPONSE_TIME=2000
+      - REQUEST_NAME_OTEL=microservice-demo3-request
+      - OTEL_SERVICE_NAME=microservice-demo3
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+      - HTTP_PORT=:8181
+    ports:
+      - "8181:8181"
+    depends_on:
+      - jaeger-all-in-one
+      - zipkin-all-in-one
+      - prometheus
+      - otel-collector
