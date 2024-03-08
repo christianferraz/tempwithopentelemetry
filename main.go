@@ -9,10 +9,13 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
+	"os/signal"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -72,6 +75,10 @@ type OutPutDTO struct {
 	TempK float64 `json:"temp_K"`
 }
 
+func init() {
+	viper.AutomaticEnv()
+}
+
 func initProvider(serviceName, collectorURL string) (func(context.Context) error, error) {
 	ctx := context.Background()
 	res, err := resource.New(ctx,
@@ -115,10 +122,35 @@ func initProvider(serviceName, collectorURL string) (func(context.Context) error
 }
 
 func main() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+	shutdown, err := initProvider(viper.GetString("OTEL_SERVICE_NAME"), viper.GetString("OTEL_EXPORTER_OLTP_ENDPOINT"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			log.Fatal("Failed to shutdown provider: %w", err)
+		}
+	}()
+
+	tracer := otel.Tracer("microservice-tracer")
+	web
+	templateData := &web.TemplateData{
+		Titie:           viper.GetString("TITLE"),
+		BackgroundColor: viper.GetString("BACKGROUND_COLOR"),
+		ResponseTime:    time.Duration(viper.GetInt("RESPONSE_TIME")),
+		ExternalCallURL: viper.GetString(""),
+		ExternalCallURL: viper.GetString(""),
+		OTELTracer:      tracer,
+	}
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /cep/{id}", BuscaCepHandler)
-	err := http.ListenAndServe(":8080", mux)
+	err = http.ListenAndServe(":8080", mux)
 	if err != nil {
 		panic(err)
 	}
