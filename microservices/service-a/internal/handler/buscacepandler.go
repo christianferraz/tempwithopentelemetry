@@ -36,7 +36,7 @@ func BuscaCepHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	url := fmt.Sprintf("%s/%s", "http://service-b:8081/cep", cep.Cep)
-	request, err := http.NewRequest(http.MethodGet, url, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	request.Header.Set("Accept", "application/json")
 
 	if err != nil {
