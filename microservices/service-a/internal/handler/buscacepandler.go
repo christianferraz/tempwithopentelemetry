@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/christianferraz/tempwithopentelemetry/microservice/service-a/internal/entity"
@@ -46,12 +47,22 @@ func BuscaCepHandler(w http.ResponseWriter, r *http.Request) {
 	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(request.Header))
 	response, err := httpclient.Do(request)
 	if err != nil {
+		fmt.Println(response.StatusCode)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
 	}
-
-	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		w.WriteHeader(response.StatusCode)
+		b, err := io.ReadAll(response.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		w.Write([]byte(b))
+		return
+	}
 
 	var weatherOutput entity.OutPutDTO
 	err = json.NewDecoder(response.Body).Decode(&weatherOutput)

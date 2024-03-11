@@ -22,12 +22,13 @@ func BuscaCepHandler(w http.ResponseWriter, r *http.Request) {
 
 	data, cepOutput, err := BuscaCep(cep, tr)
 	if err != nil {
-		log.Printf("Erro ao buscar CEP: %v", err)
+		if err.Error() == "can not find zipcode" {
+			http.Error(w, "can not find zipcode", http.StatusNotFound)
+			return
+		}
 		http.Error(w, "Erro ao buscar CEP", http.StatusInternalServerError)
 		return
 	}
-
-	//
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")

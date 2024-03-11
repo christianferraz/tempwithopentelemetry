@@ -2,5 +2,5 @@ POST http://localhost:8080/cep
 Content-Type: application/json
 
 {
-  "cep": "79052564"
+  "cep": "01153001"
 }
